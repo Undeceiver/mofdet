@@ -1,4 +1,5 @@
 :- discontiguous provable/6.
+:- multifile ground_var/2.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% About the provable predicate
@@ -109,8 +110,8 @@ substf(V,X,F1,F2,M,D) :- expressivity(substf_predicates), F2 \= unstructured(_),
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Substt rules
 % Just variables
-substt(V,X,T,X,_,_) :- ground_var(V,T).
-substt(V,_,T,T,_,_) :- ground_var(U,T), U \= V.
+substt(V,X,T,X,_,_) :- ground_var(V,T), not(vardep(X)).
+substt(V,_,T,T,_,_) :- ground_var(U,T), ground_var(V,_), U \= V.
 %substt(v,X,tv,X,_,_).
 %substt(v,_,tu,tu,_,_).
 %substt(u,X,tu,X,_,_).
@@ -150,7 +151,50 @@ provable(R,S,M,D,L,or_elimination(F,G,R,[A1,A2,A3])) :- expressivity(or_eliminat
 provable(G,S,M,D,L,modus_ponens(F,G,[A1,A2])) :- expressivity(modus_ponens), rec_provable(implies(F,G),S,M,D+1,L,A1), rec_provable(F,S,M,D,L,A2).
 
 % Forall rules
-provable(R,S,M,D,L,forall_elimination(V,F,X,A)) :- expressivity(forall_elimination), rec_substf(V,X,F,R,M,D+1), F \== R, not(vardep(X)), rec_provable(forall(V,F),S,M,D+1,L,A).
+provable(R,S,M,D,L,forall_elimination(V,F,X,A)) :- expressivity(forall_elimination), rec_substf(V,X,F,R,M,D+1), not(vardep(X)), rec_provable(forall(V,F),S,M,D+1,L,A).
 
 % Exists rules
-provable(R,S,M,D,L,exists_elimination(V,F,A)) :- expressivity(exists_elimination), rec_substf(V,y(V,F),F,R,M,D+1), F \== R, rec_provable(exists(V,F),S,M,D+1,L,A).
+provable(R,S,M,D,L,exists_elimination(V,F,A)) :- expressivity(exists_elimination), rec_substf(V,y(V,F),F,R,M,D+1), rec_provable(exists(V,F),S,M,D+1,L,A).
+
+% Utility to use the same constant for variables and the terms containing only them.
+ground_var(X,X) :- ground_var(X).
+
+% Pretty proofs
+pretty_proof_tree(A,[T]) :- axiom(_,A), format(atom(T),'~w is an axiom.',[A]).
+pretty_proof_tree(assumption(F),[T]) :- format(atom(T),'~w is an assumption.',[F]).
+pretty_proof_tree(double_negation_introduction(F,A),[T,TR]) :- pretty_proof_tree(A,TR), format(atom(T),'lnot(lnot(~w)) is a double negation of ~w.',[F,F]).
+pretty_proof_tree(distribute_in_not_and(F,G,A),[T,TR]) :- pretty_proof_tree(A,TR), format(atom(T),'lnot(and(~w,~w)) is equivalent to or(lnot(~w),lnot(~w)).',[F,G,F,G]).
+pretty_proof_tree(distribute_in_not_or(F,G,A),[T,TR]) :- pretty_proof_tree(A,TR), format(atom(T),'lnot(or(~w,~w)) is equivalent to and(lnot(~w),lnot(~w)).',[F,G,F,G]).
+pretty_proof_tree(distribute_in_not_implication(F,G,A),[T,TR]) :- pretty_proof_tree(A,TR), format(atom(T),'lnot(implies(~w,~w)) is equivalent to and(~w,lnot(~w)).',[F,G,F,G]).
+pretty_proof_tree(distribute_in_not_forall(V,F,A),[T,TR]) :- pretty_proof_tree(A,TR), format(atom(T),'lnot(forall(~w,~w)) is equivalent to exists(~w,lnot(~w)).',[V,F,V,F]).
+pretty_proof_tree(distribute_in_not_exists(V,F,A),[T,TR]) :- pretty_proof_tree(A,TR), format(atom(T),'lnot(exists(~w,~w)) is equivalent to forall(~w,lnot(~w)).',[V,F,V,F]).
+pretty_proof_tree(and_introduction(F,G,[A1,A2]),[T,TR1,TR2]) :- pretty_proof_tree(A1,TR1), pretty_proof_tree(A2,TR2), format(atom(T),'and(~w,~w) is true because both ~w and ~w are.',[F,G,F,G]).
+pretty_proof_tree(or_introduction_left(F,G,A),[T,TR]) :- pretty_proof_tree(A,TR), format(atom(T),'or(~w,~w) is true because ~w is.',[F,G,F]).
+pretty_proof_tree(or_introduction_right(F,G,A),[T,TR]) :- pretty_proof_tree(A,TR), format(atom(T),'or(~w,~w) is true because ~w is.',[F,G,G]).
+pretty_proof_tree(implication_introduction(F,G,A),[T,TR]) :- pretty_proof_tree(A,TR), format(atom(T),'implies(~w,~w) is true because ~w can be proven using ~w as assumption.',[F,G,G,F]).
+pretty_proof_tree(forall_variable,'Considering truth value for a variable term.').
+pretty_proof_tree(forall_introduction(V,F,A),[T,TR]) :- pretty_proof_tree(A,TR), format(atom(T),'forall(~w,~w) is true because ~w can be proven regardless of the value of ~w.',[V,F,F,V]).
+pretty_proof_tree(exists_introduction(V,F,X,A),[T,TR]) :- pretty_proof_tree(A,TR), format(atom(T),'exists(~w,~w) is true because ~w is true when ~w is substituted with ~w.',[V,F,F,V,X]).
+pretty_proof_tree(reflexive_equality(X),[T]) :- format(atom(T),'~w is equal to itself.',[X]).
+pretty_proof_tree(symmetric_equality(X1,X2,A),[T,TR]) :- pretty_proof_tree(A,TR), format(atom(T),'If ~w = ~w then ~w = ~w.',[X2,X1,X1,X2]).
+pretty_proof_tree(transitive_equality(X1,Y,X2,[A1,A2]),[T,TR1,TR2]) :- pretty_proof_tree(A1,TR1), pretty_proof_tree(A2,TR2), format(atom(T),'If ~w = ~w and ~w = ~w then ~w = ~w.',[X1,Y,X2,Y,X1,X2]).
+pretty_proof_tree(double_negation_elimination(F,A),[T,TR]) :- pretty_proof_tree(A,TR), format(atom(T),'lnot(lnot(~w)) is a double negation of ~w.',[F,F]).
+pretty_proof_tree(distribute_out_or_not(F,G,A),[T,TR]) :- pretty_proof_tree(A,TR), format(atom(T),'or(~w,~w) is equivalent to lnot(and(lnot(~w),lnot(~w))).',[F,G,F,G]).
+pretty_proof_tree(distribute_out_and_not(F,G,A),[T,TR]) :- pretty_proof_tree(A,TR), format(atom(T),'and(~w,~w) is equivalent to lnot(or(lnot(~w),lnot(~w))).',[F,G,F,G]).
+pretty_proof_tree(distribute_out_forall_not(V,F,A),[T,TR]) :- pretty_proof_tree(A,TR), format(atom(T),'forall(~w,~w) is equivalent to lnot(exists(~w,lnot(~w))).',[V,F,V,F]).
+pretty_proof_tree(distribute_out_exists_not(V,F,A),[T,TR]) :- pretty_proof_tree(A,TR), format(atom(T),'exists(~w,~w) is equivalent to lnot(forall(~w,lnot(~w))).',[V,F,V,F]).
+pretty_proof_tree(and_elimination_left(F,G,A),[T,TR]) :- pretty_proof_tree(A,TR), format(atom(T),'~w is true because and(~w,~w) is.',[F,F,G]).
+pretty_proof_tree(and_elimination_right(F,G,A),[T,TR]) :- pretty_proof_tree(A,TR), format(atom(T),'~w is true because and(~w,~w) is.',[F,G,F]).
+pretty_proof_tree(or_elimination(F,G,R,[A1,A2,A3]),[T,TR1,TR2,TR3]) :- pretty_proof_tree(A1,TR1), pretty_proof_tree(A2,TR2), pretty_proof_tree(A3,TR3), format(atom(T),'~w is true because it can be proven using either ~w or ~w as assumptions, and or(~w,~w) is true.',[R,F,G,F,G]).
+pretty_proof_tree(modus_ponens(F,G,[A1,A2]),[T,TR1,TR2]) :- pretty_proof_tree(A1,TR1), pretty_proof_tree(A2,TR2), format(atom(T),'~w is true because implies(~w,~w) is true and ~w is true.',[G,F,G,F]).
+pretty_proof_tree(forall_elimination(V,F,X,A),[T,TR]) :- pretty_proof_tree(A,TR), format(atom(T),'Substitute ~w with ~w in ~w, which is true for any value of ~w.',[V,X,F,V]).
+pretty_proof_tree(exists_elimination(V,F,A),[T,TR]) :- pretty_proof_tree(A,TR), format(atom(T),'exists(~w,~w) is true, and so there is a certain element for which it is true, which we have represented as y(~w,~w).',[V,F,V,F]).
+
+pretty_proof(A,T) :- pretty_proof_tree(A,TR), pretty_proof_from_tree(TR,T,0).
+pretty_proof_from_tree([],'',_).
+pretty_proof_from_tree([[X|R1]|R2],T,N) :- is(M,N+1), pretty_proof_from_tree([X|R1],TR1,M), pretty_proof_from_tree(R2,TR2,N), format(atom(T),'~w~w',[TR1,TR2]), !.
+pretty_proof_from_tree([X|R],T,N) :- pretty_proof_from_tree(R,TR,N), pretty_proof_tab(N,TAB), format(atom(T),'~w~w~n~w',[TAB,X,TR]).
+pretty_proof_tab(0,'') :- !.
+pretty_proof_tab(N,T) :- is(M,N-1), pretty_proof_tab(M,TR), format(atom(T),'  ~w',[TR]).
+
+
