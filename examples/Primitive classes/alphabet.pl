@@ -2,8 +2,8 @@
 
 % Variables
 % Variables are indicated as ground_var(var_name, var_term)
-ground_var(v1,tv1).
-ground_var(v2,tv2).
+ground_var(v1).
+ground_var(v2).
 
 % Functions (inc. constants)
 % Functions are indicated as ground_func(name,arity).

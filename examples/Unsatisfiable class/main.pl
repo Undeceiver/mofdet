@@ -29,3 +29,10 @@ standard_expressivity :- true.
 use_unbounded_provable :- false.
 use_iterative_provable(4) :- true.
 use_bounded_provable(_) :- false.
+
+% Assume completeness or consistency for the preferred ontology
+assume_complete :- false.
+assume_consistent :- false.
+
+:- [test].
+:- [tests].

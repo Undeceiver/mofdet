@@ -21,3 +21,8 @@ not_ground(X,Y) :- not(ground(X)); not(ground(Y)).
 :- dynamic cur_id/1.
 :- asserta(cur_id(1)).
 get_id(X) :- cur_id(X), retract(cur_id(X)), is(Y,X+1), asserta(cur_id(Y)).
+
+sublist(S,L) :- get_id(ID), no_repeat(sublist_rec(S,L),S,ID).
+sublist_rec(L,L).
+sublist_rec(S,[_|R]) :- sublist(S,R).
+sublist_rec([X|S],[X|R]) :- sublist(S,R).

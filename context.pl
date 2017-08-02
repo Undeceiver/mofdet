@@ -8,4 +8,6 @@ owl_primitive(edamozzarella_topping).
 owl_primitive(pizza).
 owl_domain(has_topping,pizza).
 owl_range(has_topping,pizza_topping).
+%owl_defined(pizza_topping).
 owl_defined(_) :- !, fail.
+

@@ -56,7 +56,8 @@ standard_expressivity(transitive_equality).
 expressivity(X) :- standard_expressivity, standard_expressivity(X).
 
 % Assert all expressivity.
-assert_expressivity(X) :- expressivity(X), asserta(expressivity(X) :- !).
+assert_expressivity(X) :- expressivity(X), asserta(expressivity(X) :- !), !.
+assert_expressivity(_).
 :- assert_expressivity(double_negation_introduction).
 :- assert_expressivity(distribute_in_not_and).
 :- assert_expressivity(distribute_in_not_or).
